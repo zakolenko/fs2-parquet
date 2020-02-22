@@ -10,6 +10,8 @@ addCommandAlias("ci", ";project root ;reload ;+clean ;+test:compile ;+test ;+pac
 // ---------------------------------------------------------------------------
 // Dependencies
 
+val ParquetVersion = "1.11.0"
+val FS2Version = "2.2.2"
 val CatsVersion = "2.1.0"
 val CatsEffectVersion = "2.1.1"
 val NewtypeVersion = "0.4.3"
@@ -217,16 +219,21 @@ lazy val core = project
   .settings(
     name := "fs2-parquet-core",
     libraryDependencies ++= Seq(
-      "io.estatico"    %% "newtype"          % NewtypeVersion % Provided,
-      "org.typelevel"  %% "simulacrum"       % SimulacrumVersion % Provided,
-      "org.typelevel"  %% "cats-core"        % CatsVersion,
-      "org.typelevel"  %% "cats-effect"      % CatsEffectVersion,
+      "io.estatico"        %% "newtype"          % NewtypeVersion % Provided,
+      "org.typelevel"      %% "simulacrum"       % SimulacrumVersion % Provided,
+      "org.typelevel"      %% "cats-core"        % CatsVersion,
+      "org.typelevel"      %% "cats-effect"      % CatsEffectVersion,
+      "org.apache.parquet" %  "parquet-hadoop"   % ParquetVersion exclude(
+        org = "org.slf4j", name = "slf4j-api"
+      ),
+      "co.fs2"             %% "fs2-core"         % FS2Version,
+      
       // For testing
-      "io.monix"       %% "minitest"         % MinitestVersion % Test,
-      "io.monix"       %% "minitest-laws"    % MinitestVersion % Test,
-      "org.scalacheck" %% "scalacheck"       % ScalaCheckVersion % Test,
-      "org.typelevel"  %% "cats-laws"        % CatsVersion % Test,
-      "org.typelevel"  %% "cats-effect-laws" % CatsEffectVersion % Test,
+      "io.monix"           %% "minitest"         % MinitestVersion % Test,
+      "io.monix"           %% "minitest-laws"    % MinitestVersion % Test,
+      "org.scalacheck"     %% "scalacheck"       % ScalaCheckVersion % Test,
+      "org.typelevel"      %% "cats-laws"        % CatsVersion % Test,
+      "org.typelevel"      %% "cats-effect-laws" % CatsEffectVersion % Test,
     ),
   )
 
