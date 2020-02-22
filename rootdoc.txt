@@ -1,0 +1,6 @@
+Reading and Writing the Apache Parquet file using fs2
+
+Links:
+
+ - [[https://zakolenko.github.io/fs2-parquet/ Homepage]]
+ - [[https://github.com/zakolenko/fs2-parquet GitHub repository]]
