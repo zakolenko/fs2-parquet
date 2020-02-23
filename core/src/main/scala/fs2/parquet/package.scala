@@ -18,9 +18,67 @@
 package fs2
 
 import cats.effect.{Blocker, Concurrent, ContextShift, Resource, Sync}
-import org.apache.parquet.hadoop.ParquetWriter
+import org.apache.parquet.hadoop.{ParquetReader, ParquetWriter}
+
+import scala.annotation.tailrec
+import scala.collection.mutable
+import scala.reflect.ClassTag
 
 package object parquet {
+
+  def readAll[F[_]: Sync: ContextShift, T <: AnyRef: ClassTag](
+    parquetReader: Resource[F, ParquetReader[T]],
+    blocker: Blocker,
+    chunkSize: Int
+  ): Stream[F, T] = {
+    @tailrec
+    def read(
+      pr: ParquetReader[T],
+      chunk: mutable.ArrayBuilder[T],
+    ): (Chunk[T], Option[ParquetReader[T]]) = {
+      val record = pr.read()
+      val reachedTheEnd = record eq null
+
+      if (reachedTheEnd || chunk.length + 1 >= chunkSize) {
+        (Chunk.array(chunk.result), if (reachedTheEnd) None else Some(pr))
+      } else {
+        read(pr, chunk.addOne(record))
+      }
+    }
+
+    Stream
+      .resource(parquetReader)
+      .flatMap {
+        Stream.unfoldLoopEval(_) { pr =>
+          blocker.delay {
+            val chunk = Array.newBuilder[T]
+            chunk.sizeHint(chunkSize)
+            read(pr, chunk)
+          }
+        }
+      }
+      .flatMap(Stream.chunk)
+  }
+
+  def readAll[F[_]: Sync: ContextShift, T <: AnyRef: ClassTag](
+    parquetReader: F[ParquetReader[T]],
+    blocker: Blocker,
+    chunkSize: Int
+  ): Stream[F, T] = {
+    readAll(
+      Resource.make(parquetReader)(pr => blocker.delay(pr.close())),
+      blocker,
+      chunkSize
+    )
+  }
+
+  def readAll[F[_]: Sync: ContextShift, T <: AnyRef: ClassTag](
+    parquetReader: => ParquetReader[T],
+    blocker: Blocker,
+    chunkSize: Int
+  ): Stream[F, T] = {
+    readAll(blocker.delay(parquetReader), blocker, chunkSize)
+  }
 
   def writeRotate[F[_]: Concurrent: ContextShift, T](
     parquetWriter: Resource[F, ParquetWriter[T]],
