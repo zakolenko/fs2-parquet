@@ -31,30 +31,36 @@ package object parquet {
     blocker: Blocker,
     chunkSize: Int
   ): Stream[F, T] = {
-    @tailrec
-    def read(
-      pr: ParquetReader[T],
-      chunk: mutable.ArrayBuilder[T],
-    ): (Chunk[T], Option[ParquetReader[T]]) = {
-      val record = pr.read()
-      val reachedTheEnd = record eq null
+    def read(pr: ParquetReader[T]): (Chunk[T], Option[ParquetReader[T]]) = {
+      @tailrec
+      def go(
+        pr: ParquetReader[T],
+        chunk: mutable.ArrayBuilder[T]
+      ): (Chunk[T], Option[ParquetReader[T]]) = {
+        val record = pr.read()
 
-      if (reachedTheEnd || chunk.length + 1 >= chunkSize) {
-        (Chunk.array(chunk.result), if (reachedTheEnd) None else Some(pr))
-      } else {
-        read(pr, chunk.addOne(record))
+        if (record eq null) {
+          (Chunk.array(chunk.result), None)
+        } else {
+          chunk.addOne(record)
+          if (chunk.length >= chunkSize) {
+            (Chunk.array(chunk.result), Some(pr))
+          } else {
+            go(pr, chunk)
+          }
+        }
       }
+
+      val chunk = Array.newBuilder[T]
+      chunk.sizeHint(chunkSize)
+      go(pr, chunk)
     }
 
     Stream
       .resource(parquetReader)
       .flatMap {
         Stream.unfoldLoopEval(_) { pr =>
-          blocker.delay {
-            val chunk = Array.newBuilder[T]
-            chunk.sizeHint(chunkSize)
-            read(pr, chunk)
-          }
+          blocker.delay(read(pr))
         }
       }
       .flatMap(Stream.chunk)
