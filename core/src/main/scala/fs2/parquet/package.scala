@@ -35,25 +35,27 @@ package object parquet {
       @tailrec
       def go(
         pr: ParquetReader[T],
-        chunk: mutable.ArrayBuilder[T]
+        chunk: mutable.ArrayBuilder[T],
+        acc: Int,
       ): (Chunk[T], Option[ParquetReader[T]]) = {
         val record = pr.read()
 
         if (record eq null) {
           (Chunk.array(chunk.result), None)
         } else {
-          chunk.addOne(record)
-          if (chunk.length >= chunkSize) {
+          chunk += record
+          val newAcc = acc + 1
+          if (newAcc >= chunkSize) {
             (Chunk.array(chunk.result), Some(pr))
           } else {
-            go(pr, chunk)
+            go(pr, chunk, newAcc)
           }
         }
       }
 
       val chunk = Array.newBuilder[T]
       chunk.sizeHint(chunkSize)
-      go(pr, chunk)
+      go(pr, chunk, 0)
     }
 
     Stream
