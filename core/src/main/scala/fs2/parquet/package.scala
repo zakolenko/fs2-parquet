@@ -142,14 +142,12 @@ package object parquet {
   }
 
   def writeAll[F[_]: Sync: ContextShift, T](
-    parquetWriter: => ParquetWriter[T],
+    parquetWriter: Resource[F, ParquetWriter[T]],
     blocker: Blocker
   ): Pipe[F, T, Unit] = {
     in =>
       Stream
-        .resource {
-          Resource.make(blocker.delay(parquetWriter))(pw => blocker.delay(pw.close()))
-        }
+        .resource(parquetWriter)
         .flatMap { pw =>
           in.chunks.evalMap { chunk =>
             blocker.delay {
@@ -157,5 +155,25 @@ package object parquet {
             }
           }
         }
+  }
+
+  def writeAll[F[_]: Sync: ContextShift, T](
+    parquetWriter: F[ParquetWriter[T]],
+    blocker: Blocker
+  ): Pipe[F, T, Unit] = {
+    writeAll(
+      Resource.make(parquetWriter)(pr => blocker.delay(pr.close())),
+      blocker
+    )
+  }
+
+  def writeAll[F[_]: Sync: ContextShift, T](
+    parquetWriter: => ParquetWriter[T],
+    blocker: Blocker
+  ): Pipe[F, T, Unit] = {
+    writeAll(
+      blocker.delay(parquetWriter),
+      blocker
+    )
   }
 }
