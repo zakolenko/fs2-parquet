@@ -1,5 +1,5 @@
 import sbt.Def._
-import sbt.{Def, settingKey}
+import sbt.{settingKey, Def}
 
 object BuildKeys {
   /**
@@ -70,5 +70,5 @@ object BuildKeys {
     * Auto-detected by the build process.
     */
   lazy val needsScalaMacroParadise =
-    settingKey[Boolean]("Needs Scala Macro Paradise")        
+    settingKey[Boolean]("Needs Scala Macro Paradise")
 }

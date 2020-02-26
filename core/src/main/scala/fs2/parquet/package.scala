@@ -98,22 +98,20 @@ package object parquet {
     ): Pull[F, Unit, Unit] = {
       s.pull.uncons1.flatMap {
         case Some((hd, tl)) =>
-          Pull
-            .eval {
-              blocker.delay {
-                parquet.write(hd)
-                parquet.getDataSize
-              }
+          Pull.eval {
+            blocker.delay {
+              parquet.write(hd)
+              parquet.getDataSize
             }
-            .flatMap { size =>
-              if (size >= limit) {
-                Pull
-                  .eval(parquetHotswap.swap(parquetWriter))
-                  .flatMap(go(parquetHotswap, _, tl))
-              } else {
-                go(parquetHotswap, parquet, tl)
-              }
+          }.flatMap { size =>
+            if (size >= limit) {
+              Pull
+                .eval(parquetHotswap.swap(parquetWriter))
+                .flatMap(go(parquetHotswap, _, tl))
+            } else {
+              go(parquetHotswap, parquet, tl)
             }
+          }
 
         case None =>
           Pull.done
@@ -144,17 +142,16 @@ package object parquet {
   def writeAll[F[_]: Sync: ContextShift, T](
     parquetWriter: Resource[F, ParquetWriter[T]],
     blocker: Blocker
-  ): Pipe[F, T, Unit] = {
-    in =>
-      Stream
-        .resource(parquetWriter)
-        .flatMap { pw =>
-          in.chunks.evalMap { chunk =>
-            blocker.delay {
-              chunk.foreach(pw.write)
-            }
+  ): Pipe[F, T, Unit] = { in =>
+    Stream
+      .resource(parquetWriter)
+      .flatMap { pw =>
+        in.chunks.evalMap { chunk =>
+          blocker.delay {
+            chunk.foreach(pw.write)
           }
         }
+      }
   }
 
   def writeAll[F[_]: Sync: ContextShift, T](
