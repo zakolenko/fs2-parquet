@@ -8,7 +8,9 @@ addCommandAlias("fmt", "; compile:scalafmt; test:scalafmt; scalafmtSbt")
 addCommandAlias("fmtCheck", "; compile:scalafmtCheck; test:scalafmtCheck; scalafmtSbtCheck")
 
 addCommandAlias("release", ";+clean ;fmtCheck ;ci-release ;unidoc ;microsite/publishMicrosite")
-addCommandAlias("ci", ";project root ;reload ;+clean ;fmtCheck ;+test:compile ;+test ;+package ;unidoc ;site/makeMicrosite")
+addCommandAlias(
+  "ci",
+  ";project root ;reload ;+clean ;fmtCheck ;+test:compile ;+test ;+package ;unidoc ;site/makeMicrosite")
 
 // ---------------------------------------------------------------------------
 // Dependencies
@@ -225,10 +227,10 @@ lazy val core = project
       ),
       "co.fs2" %% "fs2-core" % FS2Version,
       // For testing
-      "io.monix" %% "minitest"              % MinitestVersion % Test,
-      "io.monix" %% "minitest-laws"         % MinitestVersion % Test,
+      "io.monix" %% "minitest"              % MinitestVersion   % Test,
+      "io.monix" %% "minitest-laws"         % MinitestVersion   % Test,
       "org.scalacheck" %% "scalacheck"      % ScalaCheckVersion % Test,
-      "org.typelevel" %% "cats-laws"        % CatsVersion % Test,
+      "org.typelevel" %% "cats-laws"        % CatsVersion       % Test,
       "org.typelevel" %% "cats-effect-laws" % CatsEffectVersion % Test
     )
   )
