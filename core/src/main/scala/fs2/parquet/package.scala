@@ -21,12 +21,12 @@ import cats.effect.{Blocker, Concurrent, ContextShift, Resource, Sync}
 import org.apache.parquet.hadoop.{ParquetReader, ParquetWriter}
 
 import scala.annotation.tailrec
-import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
 
 package object parquet {
 
-  def readAll[F[_]: Sync: ContextShift, T <: AnyRef: ClassTag](
+  def readAll[F[_]: Sync: ContextShift, T <: AnyRef](
     parquetReader: Resource[F, ParquetReader[T]],
     blocker: Blocker,
     chunkSize: Int
@@ -35,27 +35,25 @@ package object parquet {
       @tailrec
       def go(
         pr: ParquetReader[T],
-        chunk: mutable.ArrayBuilder[T],
-        acc: Int,
+        chunk: ArrayBuffer[T]
       ): (Chunk[T], Option[ParquetReader[T]]) = {
         val record = pr.read()
 
         if (record eq null) {
-          (Chunk.array(chunk.result), None)
+          (Chunk.buffer(chunk), None)
         } else {
           chunk += record
-          val newAcc = acc + 1
-          if (newAcc >= chunkSize) {
-            (Chunk.array(chunk.result), Some(pr))
+          if (chunk.length >= chunkSize) {
+            (Chunk.buffer(chunk), Some(pr))
           } else {
-            go(pr, chunk, newAcc)
+            go(pr, chunk)
           }
         }
       }
 
-      val chunk = Array.newBuilder[T]
+      val chunk = ArrayBuffer.empty[T]
       chunk.sizeHint(chunkSize)
-      go(pr, chunk, 0)
+      go(pr, chunk)
     }
 
     Stream
